@@ -6,43 +6,57 @@
 #include <queue>
 
 template<typename T>
-class threadsafe_queue
-{
-  private:
-      // please complete
+class threadsafe_queue {
+private:
+	mutable std::mutex _m;
+	std::queue<T> _data_queue;
+	std::condition_variable _cv;
 
-  public:
-    threadsafe_queue() {}
+public:
+	threadsafe_queue() {}
 
-    threadsafe_queue(const threadsafe_queue& other)
-    {
-	// please complete
-    }
+	threadsafe_queue(const threadsafe_queue &other) {
+		std::lock_guard<std::mutex> lk(other._m);
+		_data_queue = other._data_queue;
+	}
 
-    threadsafe_queue& operator=(const threadsafe_queue&) = delete;
+	threadsafe_queue &operator=(const threadsafe_queue &) = delete;
 
-    void push(T new_value)
-    {
-	// please complete
-    }
+	void push(T new_value) {
+		std::lock_guard<std::mutex> lk(_m);
+		_data_queue.push_back(new_value);
+		_cv.notify_one();
+	}
 
-    bool try_pop(T& value)
-    {
-	// please complete
-    }
+	bool try_pop(T &value) {
+		// please
+        std::lock_guard<std::mutex> lk(_m);
+        
+        if(_data_queue.empty()){
+            return false;
+        }
 
-    void wait_and_pop(T& value)
-    {
-	// please complete
-    }
+        value= _data_queue.front();
+        return true;
+	}
 
-    std::shared_ptr<T> wait_and_pop()
-    {
-	// please complete
-    }
+	void wait_and_pop(T &value) {
+		std::unique_lock<std::mutex> lk(_m);
+		_cv.wait(lk, [this] { return !_data_queue.empty(); });
+		value = _data_queue.front();
+		_data_queue.pop();
+	}
 
-    bool empty() const
-    {
-	// please complete
-    }
+	std::shared_ptr<T> wait_and_pop() {
+		std::unique_lock<std::mutex> lk(_m);
+		_cv.wait(lk, [this] { return !_data_queue.empty(); });
+		std::shared_ptr<T> res(std::make_shared<T>(_data_queue.front()));
+		_data_queue.pop();
+		return res;
+	}
+
+	bool empty() const {
+        std::lock_guard<std::mutex> lk(_m);
+        return _data_queue.empty();
+	}
 };
