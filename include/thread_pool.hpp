@@ -55,7 +55,9 @@ public:
 			return;
 	}
 
-
+	/**
+	* Send the threads a new task
+	 */
 	template<typename F>
 	void submit(F f) {
 		_queue.push(std::function<task_type>(f));
